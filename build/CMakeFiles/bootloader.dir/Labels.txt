@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+D:/ESP32/laser_gun/build/CMakeFiles/bootloader
+D:/ESP32/laser_gun/build/CMakeFiles/bootloader.rule
+D:/ESP32/laser_gun/build/CMakeFiles/bootloader-complete.rule
+D:/ESP32/laser_gun/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+D:/ESP32/laser_gun/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+D:/ESP32/laser_gun/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+D:/ESP32/laser_gun/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+D:/ESP32/laser_gun/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+D:/ESP32/laser_gun/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+D:/ESP32/laser_gun/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
