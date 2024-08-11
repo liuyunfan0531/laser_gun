@@ -8,6 +8,7 @@
 static const char *TAG = "gun_adc";
 
 #define NO_OF_SAMPLES       64          //Multisampling
+#define ADC_PIN             GPIO_NUM_4
 
 static esp_adc_cal_characteristics_t *adcChar;
 
@@ -42,7 +43,7 @@ static uint32_t gun_get_chg_vol(void)
 
     adc_reading_chg /= NO_OF_SAMPLES;
 
-    uint32_t chg_value = esp_adc_cal_raw_to_voltage(adc_reading_chg, &adcChar);
+    uint32_t chg_value = esp_adc_cal_raw_to_voltage(adc_reading_chg, adcChar);
 
     return chg_value;
 }
@@ -106,6 +107,9 @@ void gun_adc_init(void)
     adc1_config_width(width);
     adc1_config_channel_atten(channel_chg, atten);
 
+    adc_vref_to_gpio(unit, ADC_PIN);
+
+    adcChar = (esp_adc_cal_characteristics_t*)calloc(10, sizeof(esp_adc_cal_characteristics_t));
     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, 
                                                             atten,
                                                             width,
