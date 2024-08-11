@@ -11,7 +11,7 @@ static const char *TAG = "gun_adc";
 
 static esp_adc_cal_characteristics_t *adcChar;
 
-static const adc_unit_t unit = ADC_UNIT_2;
+static const adc_unit_t unit = ADC_UNIT_1;
 static const adc_atten_t atten = ADC_ATTEN_DB_11;
 static const adc_bits_width_t width = ADC_WIDTH_BIT_12;
 static const adc1_channel_t channel_chg = ADC1_CHANNEL_3;
