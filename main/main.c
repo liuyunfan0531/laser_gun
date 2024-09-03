@@ -5,6 +5,7 @@
 #include "gun_adc.h"
 #include "gun_charge.h"
 #include "gun_presskey.h"
+#include "gun_ws2812.h"
 
 void app_main(void)
 {
@@ -16,8 +17,10 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    gun_presskey_init();
-    gun_presskey_config();
-    gun_adc_init();
-    gun_charge_init();
+    gun_ws2812_init();
+    gun_ws812_flush_data(WS2812_READ);
+    // gun_presskey_init();
+    // gun_presskey_config();
+    // gun_adc_init();
+    // gun_charge_init();
 }
