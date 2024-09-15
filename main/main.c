@@ -17,10 +17,13 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    //初始化按键
+    gun_presskey_init();
+    gun_presskey_config();
+    //使能adc
+    gun_adc_init();
+    //初始化充电task
+    gun_charge_init();
+    //初始化ws2812
     gun_ws2812_init();
-    gun_ws812_flush_data(WS2812_READ);
-    // gun_presskey_init();
-    // gun_presskey_config();
-    // gun_adc_init();
-    // gun_charge_init();
 }
