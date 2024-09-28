@@ -6,7 +6,9 @@
 #include "gun_charge.h"
 #include "gun_presskey.h"
 #include "gun_ws2812.h"
+#include "gun_infrared.h"
 
+// #define RMT_TX_ENABLE
 void app_main(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -24,6 +26,13 @@ void app_main(void)
     gun_adc_init();
     //初始化充电task
     gun_charge_init();
+#ifdef RMT_TX_ENABLE
+    //初始化红外发送
+    gun_ir_tx_init();
+#else
+    //初始化红外接收
+    gun_ir_rx_init();
+#endif
     //初始化ws2812
     gun_ws2812_init();
 }

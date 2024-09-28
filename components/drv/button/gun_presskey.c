@@ -5,6 +5,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "gun_infrared.h"
+
 static const char *TAG = "gun_presskey";
 
 static Button botton_shoot; 
@@ -42,34 +44,25 @@ static void button_cbk(void *button)
 	
 	event_val = get_button_event((struct Button *)button);
 
-    if((struct Button *)button == &botton_shoot)
-    {
-        if(event_val == SINGLE_CLICK)
-        {
+    if((struct Button *)button == &botton_shoot) {
+        if(event_val == SINGLE_CLICK) {
             ESP_LOGI(TAG, "-------SHOOT SINGLE_CLICK-------");
             //处理相关逻辑
-
+            gun_ir_tx_task();
         }
-    }
-    else if((struct Button *)button == &botton_map)
-    {
-        if(event_val == SINGLE_CLICK)
-        {
+    } else if((struct Button *)button == &botton_map) {
+        if(event_val == SINGLE_CLICK) {
             ESP_LOGI(TAG, "-------MAP SINGLE_CLICK-------");
             //处理相关逻辑
 
         }
-    }
-    else if((struct Button *)button == &botton_panel)
-    {
-        if(event_val == SINGLE_CLICK)
-        {
+    } else if((struct Button *)button == &botton_panel) {
+        if(event_val == SINGLE_CLICK) {
             ESP_LOGI(TAG, "-------PANEL SINGLE_CLICK-------");
             //处理相关逻辑
 
         }
-    }
-    else{
+    } else {
 
     }
 }

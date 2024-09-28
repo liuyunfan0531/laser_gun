@@ -120,7 +120,7 @@ void ws2812_control_task(void* arg)
 {
     gun_charge_t charge_info;
     ws2812_effect_t ws2812_effect = WS2812_EFFECT_ON;
-    ws2812_select_color color_index = WS2812_RED;
+    ws2812_select_color color_index = WS2812_WRITE;
 
     for(; ;)
     {
@@ -137,6 +137,9 @@ void ws2812_control_task(void* arg)
                 break;
             case WS2812_EFFECT_BREATH:
                 gun_ws2812_set_breath(color_index);
+                break;
+            case WS2812_EFFECT_BLINK:
+
                 break;
         }
 

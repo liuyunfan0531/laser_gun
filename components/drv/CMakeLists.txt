@@ -4,6 +4,7 @@ file(GLOB_RECURSE LED_SRCS "gun_ws2812.c" "led/*.c")
 
 idf_component_register(SRCS "gun_adc.c"
                             "gun_spi.c"
+							"gun_infrared.c"
 							${CHARGE_SRCS}
 							${BUTTON_SRCS}
 							${LED_SRCS}

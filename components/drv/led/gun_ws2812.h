@@ -16,7 +16,8 @@ typedef enum{
 
 typedef enum{
     WS2812_EFFECT_ON = 1,
-    WS2812_EFFECT_BREATH
+    WS2812_EFFECT_BREATH,
+    WS2812_EFFECT_BLINK
 }ws2812_effect_t;
 
 typedef struct {
