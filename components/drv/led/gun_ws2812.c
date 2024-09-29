@@ -125,7 +125,7 @@ void ws2812_control_task(void* arg)
     for(; ;)
     {
         gun_charge_info(&charge_info);
-        if(charge_info.gun_charing == 1){
+        if(charge_info.gun_charing == 1) {
             ws2812_effect = WS2812_EFFECT_BREATH;
             color_index = WS2812_WRITE;
         }

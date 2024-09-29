@@ -19,8 +19,9 @@ typedef struct{
 }gun_charge_t;
 
 gun_charge_t gun_charge_val;
-// gun_charge_t charge_info;
+gun_charge_t charge_info;
 
 void gun_charge_init(void);
+void gun_charge_info(gun_charge_t *p_charge_info);
 
 #endif

@@ -8,13 +8,14 @@
 
 static const char *TAG = "gun_infrared";
 
-#define RMT_TX_GPIO_NUM     48
-#define RMT_TX_CHANNEL      RMT_CHANNEL_0
-#define RMT_RX_GPIO_NUM     45
-#define RMT_RX_CHANNEL      RMT_CHANNEL_4
+#define RMT_TX_GPIO_NUM         48
+#define RMT_TX_CHANNEL          RMT_CHANNEL_0
+#define RMT_RX_GPIO_NUM         45
+#define RMT_RX_CHANNEL          RMT_CHANNEL_4
 
-#define RMT_CLK_DIV         100
-#define RMT_TICK_10_US      (80000000/RMT_CLK_DIV/100000)
+#define RMT_CLK_DIV             100
+#define RMT_TICK_10_US          (80000000/RMT_CLK_DIV/100000)
+#define RMT_ITEM32_TIMEOUT_US   7000
 
 #define HEADER_HIGH_9000US      9000                         /*!< NEC protocol header: positive 9ms */
 #define HEADER_LOW_4500US       4500                         /*!< NEC protocol header: negative 4.5ms*/ 
@@ -154,7 +155,7 @@ void gun_ir_tx_task(void)
         xSemaphoreGive(sp_rmt_mutex);
     }
 }
-/*--------------------------------------------------------------------------------------------------------------------------------*/
+
 void gun_ir_tx_init(void)
 {
     gun_ir_tx_config();
@@ -169,6 +170,21 @@ void gun_ir_tx_init(void)
     s_ir_tx_data.user_id = 0x01;
     s_ir_tx_data.war_situation = 0x02;
 }
+/*--------------------------------------------------------------------------------------------------------------------------------*/
+
+static void parse_items(rmt_item32_t *item)
+{
+
+}
+
+void gun_ir_rx_task(void *arg)
+{
+    RingbufHandle_t rb = NULL
+
+    rmt_get_ringbuf_handle(RMT_RX_CHANNEL, rb);
+
+    
+}
 
 static void gun_ir_rx_config()
 {
@@ -181,15 +197,17 @@ static void gun_ir_rx_config()
         .rx_config = {
            .filter_en = true,           //开启滤波
            .filter_ticks_thresh = 100;  //滤波阈值 125us以下的信号不接受
-           
+           .idle_threshold = (RMT_ITEM32_TIMEOUT_US /10) * RMT_TICK_10_US;
         }
     };
     rmt_config(&rmt_rx);
-
+    rmt_driver_install(rmt_rx.channel, 1000, 0);
 }
 
 void gun_ir_rx_init(void)
 {
     gun_ir_rx_config();
 
+    rmt_rx_start(RMT_RX_CHANNEL, true);
+    xTaskCreate();
 }
