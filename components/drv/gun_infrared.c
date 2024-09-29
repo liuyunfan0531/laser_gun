@@ -179,11 +179,11 @@ static void parse_items(rmt_item32_t *item)
 
 void gun_ir_rx_task(void *arg)
 {
-    RingbufHandle_t rb = NULL
+    RingbufHandle_t rb = NULL;
 
     rmt_get_ringbuf_handle(RMT_RX_CHANNEL, rb);
 
-    
+
 }
 
 static void gun_ir_rx_config()
@@ -196,8 +196,8 @@ static void gun_ir_rx_config()
         .clk_div = RMT_CLK_DIV,
         .rx_config = {
            .filter_en = true,           //开启滤波
-           .filter_ticks_thresh = 100;  //滤波阈值 125us以下的信号不接受
-           .idle_threshold = (RMT_ITEM32_TIMEOUT_US /10) * RMT_TICK_10_US;
+           .filter_ticks_thresh = 100,  //滤波阈值 125us以下的信号不接受
+           .idle_threshold = (RMT_ITEM32_TIMEOUT_US /10) * RMT_TICK_10_US
         }
     };
     rmt_config(&rmt_rx);
@@ -209,5 +209,5 @@ void gun_ir_rx_init(void)
     gun_ir_rx_config();
 
     rmt_rx_start(RMT_RX_CHANNEL, true);
-    xTaskCreate();
+    // xTaskCreate();
 }
