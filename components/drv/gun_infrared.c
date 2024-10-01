@@ -3,6 +3,7 @@
 #include "driver/rmt.h"
 #include "esp_log.h"
 #include <string.h>
+#include <stdio.h>
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
@@ -15,7 +16,7 @@ static const char *TAG = "gun_infrared";
 
 #define RMT_CLK_DIV             100
 #define RMT_TICK_10_US          (80000000/RMT_CLK_DIV/100000)
-#define RMT_ITEM32_TIMEOUT_US   7000
+#define RMT_ITEM32_TIMEOUT_US   21000
 
 #define HEADER_HIGH_9000US      9000                         /*!< NEC protocol header: positive 9ms */
 #define HEADER_LOW_4500US       4500                         /*!< NEC protocol header: negative 4.5ms*/ 
@@ -174,16 +175,47 @@ void gun_ir_tx_init(void)
 
 static void parse_items(rmt_item32_t *item)
 {
+    uint8_t data = 0;
+    item++;     //跳过引导码
 
+    ESP_LOGI(TAG, "---------------------------------------");
+
+    for(uint8_t i = 0; i < 8; i++) {
+        if (item->level0 == 1 && item->duration0 >= (NEC_BIT_ONE_HIGH_US / 10) * RMT_TICK_10_US &&
+            item->duration1 >= (NEC_BIT_ONE_LOW_US / 10) * RMT_TICK_10_US) {
+            data |= (1 << (7 - i)); // 是 '1'
+        } else if (item->level0 == 1 && item->duration0 >= (NEC_BIT_ZERO_HIGH_US / 10) * RMT_TICK_10_US &&
+                   item->duration1 >= (NEC_BIT_ZERO_LOW_US / 10) * RMT_TICK_10_US) {
+            // 是 '0'，不做处理
+        }
+        item++; // 移动到下一个项
+    }
+    ESP_LOGI(TAG, "-----data = %d-----", data);
 }
 
 void gun_ir_rx_task(void *arg)
 {
+    size_t rx_size = 0;
     RingbufHandle_t rb = NULL;
 
-    rmt_get_ringbuf_handle(RMT_RX_CHANNEL, rb);
+    rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &rb);     //获取红外接收器接收的数据 放在ringbuff中
+    for(; ;)
+    {
+        rmt_item32_t *item = (rmt_item32_t *)xRingbufferReceive(rb, &rx_size, portMAX_DELAY);
 
-
+        if(item != NULL) {
+            ESP_LOGI(TAG, "-----rx_size = %d-----", rx_size);
+            if(rx_size < 33) {
+                //不处理
+            } else {
+                rmt_rx_stop(RMT_RX_CHANNEL);
+                parse_items(item);
+                vRingbufferReturnItem(rb, (void*) item);
+                rmt_rx_start(RMT_RX_CHANNEL, true);
+            }
+        }
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
 }
 
 static void gun_ir_rx_config()
@@ -197,7 +229,7 @@ static void gun_ir_rx_config()
         .rx_config = {
            .filter_en = true,           //开启滤波
            .filter_ticks_thresh = 100,  //滤波阈值 125us以下的信号不接受
-           .idle_threshold = (RMT_ITEM32_TIMEOUT_US /10) * RMT_TICK_10_US
+           .idle_threshold = (RMT_ITEM32_TIMEOUT_US / 10) * RMT_TICK_10_US
         }
     };
     rmt_config(&rmt_rx);
@@ -206,8 +238,10 @@ static void gun_ir_rx_config()
 
 void gun_ir_rx_init(void)
 {
+    RingbufHandle_t rb = NULL;
     gun_ir_rx_config();
+    ESP_LOGI(TAG, "----init rmt rx----");
 
     rmt_rx_start(RMT_RX_CHANNEL, true);
-    // xTaskCreate();
+    xTaskCreate(gun_ir_rx_task, "gun_ir_rx_task", 2048, NULL, 10, NULL);
 }
