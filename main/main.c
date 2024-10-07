@@ -8,7 +8,7 @@
 #include "gun_ws2812.h"
 #include "gun_infrared.h"
 
-//#define RMT_TX_ENABLE
+#define RMT_TX_ENABLE
 void app_main(void)
 {
     esp_err_t ret = nvs_flash_init();

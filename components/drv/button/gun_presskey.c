@@ -78,7 +78,7 @@ static void presskey_thread_entry(void *arg)
 
 void gun_presskey_config(void)
 {
-    xTaskCreate(presskey_thread_entry, "presskey_thread_entry", 2048, NULL, 9, NULL);
+    xTaskCreate(presskey_thread_entry, "presskey_thread_entry", 2048, NULL, 8, NULL);
 
     button_init(&botton_shoot, read_button_shoot, PIN_LOW); 
 	button_attach(&botton_shoot, SINGLE_CLICK, button_cbk);	    //注册单击事件

@@ -16,7 +16,7 @@ static const char *TAG = "gun_infrared";
 
 #define RMT_CLK_DIV             100
 #define RMT_TICK_10_US          (80000000/RMT_CLK_DIV/100000)
-#define RMT_ITEM32_TIMEOUT_US   21000
+#define RMT_ITEM32_TIMEOUT_US   10000
 
 #define HEADER_HIGH_9000US      9000                         /*!< NEC protocol header: positive 9ms */
 #define HEADER_LOW_4500US       4500                         /*!< NEC protocol header: negative 4.5ms*/ 
@@ -25,16 +25,22 @@ static const char *TAG = "gun_infrared";
 #define NEC_BIT_ZERO_HIGH_US    560
 #define NEC_BIT_ZERO_LOW_US     560
 
-#define NEC_DATA_ITEM_NUM       34
+#define NEC_DATA_ITEM_NUM       33
 
 static SemaphoreHandle_t sp_rmt_mutex;
 
 typedef struct{
+    rmt_channel_t channel;      
+    gpio_num_t gpio_num;        
+    rmt_mode_t mode;
+}ir_config_t;
+
+typedef struct{
     uint8_t user_id;
     uint8_t war_situation;
-}ir_tx_data_t;
+}ir_data_t;
 
-ir_tx_data_t s_ir_tx_data;
+ir_data_t s_ir_tx_data, s_ir_rx_data;
 
 /* (high_us / 10) 相当于把时间从微妙转化成以10微妙为单位时间 
    RMT_TICK_10_US相当于是周期 10微妙对应8个周期 */
@@ -110,12 +116,12 @@ static void nec_buid_item(rmt_item32_t *item, uint8_t ir_tx_user_id, uint8_t ir_
     }
 }
 
-static void gun_ir_tx_config()
+static void gun_ir_tx_config(ir_config_t *sp_ir_config)
 {
     rmt_config_t rmt_tx = {
-        .rmt_mode = RMT_MODE_TX,
-        .channel = RMT_TX_CHANNEL,
-        .gpio_num = RMT_TX_GPIO_NUM,
+        .rmt_mode = sp_ir_config->mode,
+        .channel = sp_ir_config->channel,
+        .gpio_num = sp_ir_config->gpio_num,
         .mem_block_num = 1,         //可以存64个item
         .clk_div = RMT_CLK_DIV,
         .tx_config = {
@@ -154,12 +160,19 @@ void gun_ir_tx_task(void)
 
         //释放互斥锁
         xSemaphoreGive(sp_rmt_mutex);
-    }
+    } 
 }
 
 void gun_ir_tx_init(void)
 {
-    gun_ir_tx_config();
+    ir_config_t tx_config = {
+        .channel = RMT_TX_CHANNEL,
+        .gpio_num = RMT_TX_GPIO_NUM,
+        .mode = RMT_MODE_TX,
+    };
+
+    gun_ir_tx_config(&tx_config);
+    ESP_LOGI(TAG, "----init rmt tx----");
 
     sp_rmt_mutex = xSemaphoreCreateBinary();
     if (sp_rmt_mutex != NULL) {
@@ -173,24 +186,52 @@ void gun_ir_tx_init(void)
 }
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 
+static bool check_if_one_item(rmt_item32_t *item)
+{
+    if(item->level0 == 0 
+       && item->duration0 >= (((NEC_BIT_ONE_HIGH_US / 10) * RMT_TICK_10_US) - 100)
+       && item->level1 == 1 
+       && item->duration1 >= (((NEC_BIT_ONE_LOW_US / 10) * RMT_TICK_10_US) - 100)) {
+        return true;
+    }
+    return false;
+}
+
+static bool check_if_zero_item(rmt_item32_t *item)
+{
+    if(item->level0 == 0 
+       && item->duration0 >= (((NEC_BIT_ZERO_HIGH_US / 10) * RMT_TICK_10_US) - 100)
+       && item->level1 == 1 
+       && item->duration1 >= (((NEC_BIT_ZERO_LOW_US / 10) * RMT_TICK_10_US)- 100)) {
+        return true;
+    }
+    return false;
+}
 static void parse_items(rmt_item32_t *item)
 {
-    uint8_t data = 0;
     item++;     //跳过引导码
 
-    ESP_LOGI(TAG, "---------------------------------------");
-
-    for(uint8_t i = 0; i < 8; i++) {
-        if (item->level0 == 1 && item->duration0 >= (NEC_BIT_ONE_HIGH_US / 10) * RMT_TICK_10_US &&
-            item->duration1 >= (NEC_BIT_ONE_LOW_US / 10) * RMT_TICK_10_US) {
-            data |= (1 << (7 - i)); // 是 '1'
-        } else if (item->level0 == 1 && item->duration0 >= (NEC_BIT_ZERO_HIGH_US / 10) * RMT_TICK_10_US &&
-                   item->duration1 >= (NEC_BIT_ZERO_LOW_US / 10) * RMT_TICK_10_US) {
-            // 是 '0'，不做处理
+    for(uint8_t i = 0; i < 8; i++)
+    {
+        if(check_if_one_item(item)) {
+            s_ir_rx_data.user_id |= (1 << (7 - i));
+        } else if(check_if_zero_item(item)) {
+            s_ir_rx_data.user_id |= (0 << (7 - i));
         }
-        item++; // 移动到下一个项
+        item++;
     }
-    ESP_LOGI(TAG, "-----data = %d-----", data);
+
+    for(uint8_t i = 0; i < 8; i++)
+    {
+        if(check_if_one_item(item)) {
+            s_ir_rx_data.war_situation |= (1 << (7 - i));
+        } else if(check_if_zero_item(item)) {
+            s_ir_rx_data.war_situation |= (0 << (7 - i));
+        }
+        item++;
+    }
+
+    ESP_LOGI(TAG, "-----user_id = %d, war_situation = %d-----", s_ir_rx_data.user_id, s_ir_rx_data.war_situation);
 }
 
 void gun_ir_rx_task(void *arg)
@@ -199,36 +240,35 @@ void gun_ir_rx_task(void *arg)
     RingbufHandle_t rb = NULL;
 
     rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &rb);     //获取红外接收器接收的数据 放在ringbuff中
+    rmt_rx_start(RMT_RX_CHANNEL, true);
     for(; ;)
     {
         rmt_item32_t *item = (rmt_item32_t *)xRingbufferReceive(rb, &rx_size, portMAX_DELAY);
 
         if(item != NULL) {
-            ESP_LOGI(TAG, "-----rx_size = %d-----", rx_size);
-            if(rx_size < 33) {
-                //不处理
-            } else {
+            if(rx_size == (NEC_DATA_ITEM_NUM * sizeof(rmt_item32_t))) {
+                ESP_LOGI(TAG, "-----rx_size = %d-----", rx_size);
                 rmt_rx_stop(RMT_RX_CHANNEL);
                 parse_items(item);
-                vRingbufferReturnItem(rb, (void*) item);
                 rmt_rx_start(RMT_RX_CHANNEL, true);
             }
+            vRingbufferReturnItem(rb, (void*) item);
         }
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
-static void gun_ir_rx_config()
+static void gun_ir_rx_config(ir_config_t *sp_ir_config)
 {
     rmt_config_t rmt_rx = {
-        .rmt_mode = RMT_MODE_RX,
-        .channel = RMT_RX_CHANNEL,
-        .gpio_num = RMT_RX_GPIO_NUM,
+        .rmt_mode = sp_ir_config->mode,
+        .channel = sp_ir_config->channel,
+        .gpio_num = sp_ir_config->gpio_num,
         .mem_block_num = 1,             //可以存64个item
         .clk_div = RMT_CLK_DIV,
         .rx_config = {
            .filter_en = true,           //开启滤波
-           .filter_ticks_thresh = 100,  //滤波阈值 125us以下的信号不接受
+           .filter_ticks_thresh = 100,  //滤波阈值 250us以下的信号不接受 
            .idle_threshold = (RMT_ITEM32_TIMEOUT_US / 10) * RMT_TICK_10_US
         }
     };
@@ -238,10 +278,14 @@ static void gun_ir_rx_config()
 
 void gun_ir_rx_init(void)
 {
-    RingbufHandle_t rb = NULL;
-    gun_ir_rx_config();
+    ir_config_t rx_config = {
+        .channel = RMT_RX_CHANNEL,
+        .gpio_num = RMT_RX_GPIO_NUM,
+        .mode = RMT_MODE_RX,
+    };
+
+    gun_ir_rx_config(&rx_config);
     ESP_LOGI(TAG, "----init rmt rx----");
 
-    rmt_rx_start(RMT_RX_CHANNEL, true);
-    xTaskCreate(gun_ir_rx_task, "gun_ir_rx_task", 2048, NULL, 10, NULL);
+    xTaskCreate(gun_ir_rx_task, "gun_ir_rx_task", 2048, NULL, 9, NULL);
 }
